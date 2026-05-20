@@ -1,45 +1,25 @@
-FROM python:3.10
+FROM golang:1.22-alpine AS builder
 
-ENV PYTHONUNBUFFERED=1
+WORKDIR /app
 
-# Install uv
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#installing-uv
-COPY --from=ghcr.io/astral-sh/uv:0.9.26 /uv /uvx /bin/
+COPY go.mod go.sum ./
+RUN go mod download
 
-# Compile bytecode
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#compiling-bytecode
-ENV UV_COMPILE_BYTECODE=1
+COPY . .
 
-# uv Cache
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#caching
-ENV UV_LINK_MODE=copy
+RUN CGO_ENABLED=0 GOOS=linux go build -o server ./cmd/server
 
-WORKDIR /app/
+FROM alpine:3.20
 
-# Place executables in the environment at the front of the path
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#using-the-environment
-ENV PATH="/app/venv/bin:$PATH"
+RUN apk --no-cache add ca-certificates
 
-# Install dependencies
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-workspace --package app
+WORKDIR /root/
 
-COPY ./backend-barber/scripts /app/backend/scripts
+COPY --from=builder /app/server .
 
-COPY ./backend-barber/pyproject.toml ./backend-barber/alembic.ini /app/backend/
+EXPOSE 8080
 
-COPY ./backend-barber/app /app/backend/app
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget -qO- http://localhost:8080/health || exit 1
 
-# Sync the project
-# Ref: https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --package app
-
-WORKDIR /app/backend/
-
-CMD ["fastapi", "run", "--workers", "4", "app/main.py"]
+CMD ["./server"]
