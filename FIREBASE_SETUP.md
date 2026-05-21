@@ -259,4 +259,26 @@ class DefaultFirebaseOptions {
 
 ---
 
+## 10. Seed Database (Opsional)
+
+Untuk mengisi database dengan data default (admin, layanan, barber):
+
+```bash
+cd backend-barber
+docker-compose exec db psql -U barber -d barbershop -f /docker-entrypoint-initdb.d/seed.sql
+```
+
+Atau manual:
+```bash
+psql -U barber -d barbershop -f seed.sql
+```
+
+**Data yang di-seed:**
+- **Admin**: `admin@barberku.com` dengan PIN `1234`
+- **Layanan**: 5 layanan default (Potong Rambut, Cukur Jenggot, dll.)
+- **Barber**: 3 barber default (Ahmad, Budi, Candra)
+- **Store Settings**: Jam operasional 09:00-21:00, maks 50 antrian
+
+---
+
 Dibutuhkan: 15-30 menit untuk setup lengkap.
