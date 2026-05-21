@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/barberku/backend-barber/internal/entity"
 )
@@ -18,6 +19,8 @@ type QueueRepository interface {
 	GetCountByStatus(ctx context.Context, status entity.QueueStatus) (int, error)
 	GetNextQueueNumber(ctx context.Context) (int, error)
 	BeginTx(ctx context.Context) (*sql.Tx, error)
+	GetCancelCountByCustomerToday(ctx context.Context, customerID string) (int, error)
+	GetLastCancelTimeByCustomer(ctx context.Context, customerID string) (*time.Time, error)
 }
 
 type UserRepository interface {

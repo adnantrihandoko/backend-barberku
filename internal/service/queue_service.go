@@ -87,6 +87,22 @@ func (s *QueueServiceImpl) JoinQueue(ctx context.Context, customerID, customerNa
 		}
 	}
 
+	cancelCount, err := s.queueRepo.GetCancelCountByCustomerToday(ctx, customerID)
+	if err != nil {
+		return nil, err
+	}
+	if cancelCount >= 2 {
+		return nil, ErrCancelLimitReached
+	}
+
+	lastCancelTime, err := s.queueRepo.GetLastCancelTimeByCustomer(ctx, customerID)
+	if err != nil {
+		return nil, err
+	}
+	if lastCancelTime != nil && now.Sub(*lastCancelTime) < 15*time.Minute {
+		return nil, ErrCancelCooldown
+	}
+
 	nextNumber, err := s.queueRepo.GetNextQueueNumber(ctx)
 	if err != nil {
 		return nil, err

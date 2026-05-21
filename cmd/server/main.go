@@ -15,13 +15,29 @@ import (
 
 	"github.com/barberku/backend-barber/internal/handler"
 	"github.com/barberku/backend-barber/internal/middleware"
+	"github.com/barberku/backend-barber/internal/repository"
 	"github.com/barberku/backend-barber/internal/service"
 	"github.com/barberku/backend-barber/pkg/config"
+	"github.com/barberku/backend-barber/pkg/database"
 	"github.com/barberku/backend-barber/pkg/websocket"
 )
 
 func main() {
 	cfg := config.Load()
+
+	ctx := context.Background()
+
+	db, err := database.NewDatabase(ctx, cfg.DBConnectionString())
+	if err != nil {
+		slog.Error("failed to connect to database", "error", err)
+		os.Exit(1)
+	}
+	defer db.Close()
+
+	if err := db.Migrate(ctx); err != nil {
+		slog.Error("failed to run migrations", "error", err)
+		os.Exit(1)
+	}
 
 	slog.Info("starting BarberKu server", "port", cfg.ServerPort)
 
@@ -45,32 +61,40 @@ func main() {
 	hub := websocket.NewHub()
 	go hub.Run()
 
-	authService := service.NewAuthService(nil, cfg.JWTSecret)
+	authRepo := repository.NewAuthRepository(db.Pool)
+	authService := service.NewAuthService(authRepo, cfg.JWTSecret)
 	authHandler := handler.NewAuthHandler(authService)
 
 	broadcaster := func(event string, data interface{}) {
 		hub.Broadcast(event, data)
 	}
 
-	fcmService := service.NewFCMService(nil, cfg.FCMServerKey)
+	queueRepo := repository.NewQueueRepository(db.Pool)
+	storeSettingsRepo := repository.NewStoreSettingsRepository(db.Pool)
+	fcmTokenRepo := repository.NewFCMTokenRepository(db.Pool)
+
+	fcmService := service.NewFCMService(fcmTokenRepo, cfg.FCMServerKey)
 	fcmHandler := handler.NewFCMHandler(fcmService)
 
-	queueService := service.NewQueueService(nil, nil, broadcaster, fcmService)
+	queueService := service.NewQueueService(queueRepo, storeSettingsRepo, broadcaster, fcmService)
 	queueHandler := handler.NewQueueHandler(queueService)
 
-	serviceService := service.NewServiceService(nil)
+	serviceRepo := repository.NewServiceRepository(db.Pool)
+	serviceService := service.NewServiceService(serviceRepo)
 	serviceHandler := handler.NewServiceHandler(serviceService)
 
-	barberService := service.NewBarberService(nil)
+	barberRepo := repository.NewBarberRepository(db.Pool)
+	barberService := service.NewBarberService(barberRepo)
 	barberHandler := handler.NewBarberHandler(barberService)
 
-	historyService := service.NewHistoryService(nil)
+	historyService := service.NewHistoryService(queueRepo)
 	historyHandler := handler.NewHistoryHandler(historyService)
 
-	storeSettingsService := service.NewStoreSettingsService(nil)
+	storeSettingsService := service.NewStoreSettingsService(storeSettingsRepo)
 	storeSettingsHandler := handler.NewStoreSettingsHandler(storeSettingsService)
 
-	statsService := service.NewStatsService(nil)
+	statsRepo := repository.NewStatsRepository(db.Pool)
+	statsService := service.NewStatsService(statsRepo)
 	statsHandler := handler.NewStatsHandler(statsService)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
