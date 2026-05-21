@@ -24,22 +24,19 @@ var (
 
 type QueueServiceImpl struct {
 	queueRepo     repository.QueueRepository
+	settingsRepo  repository.StoreSettingsRepository
 	broadcaster   func(event string, data interface{})
-	openHour      int
-	closeHour     int
-	maxQueueSize  int
 }
 
 func NewQueueService(
 	queueRepo repository.QueueRepository,
+	settingsRepo repository.StoreSettingsRepository,
 	broadcaster func(string, interface{}),
 ) *QueueServiceImpl {
 	return &QueueServiceImpl{
 		queueRepo:    queueRepo,
+		settingsRepo: settingsRepo,
 		broadcaster:  broadcaster,
-		openHour:     9,
-		closeHour:    21,
-		maxQueueSize: 50,
 	}
 }
 
@@ -54,7 +51,16 @@ func (s *QueueServiceImpl) GetQueueDetail(ctx context.Context, queueID string) (
 func (s *QueueServiceImpl) JoinQueue(ctx context.Context, customerID, customerName, serviceID, serviceName string, barberID *string) (*entity.Queue, error) {
 	now := time.Now()
 
-	if now.Hour() < s.openHour || now.Hour() >= s.closeHour {
+	settings, err := s.settingsRepo.Get(ctx)
+	if err != nil {
+		settings = &entity.StoreSettings{
+			OpenHour:     9,
+			CloseHour:    21,
+			MaxQueueSize: 50,
+		}
+	}
+
+	if now.Hour() < settings.OpenHour || now.Hour() >= settings.CloseHour {
 		return nil, ErrOutsideBusinessHour
 	}
 
@@ -62,7 +68,7 @@ func (s *QueueServiceImpl) JoinQueue(ctx context.Context, customerID, customerNa
 	if err != nil {
 		return nil, err
 	}
-	if waitingCount >= s.maxQueueSize {
+	if waitingCount >= settings.MaxQueueSize {
 		return nil, ErrQueueFull
 	}
 
