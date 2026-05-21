@@ -77,8 +77,7 @@ func (h *QueueHandlerImpl) JoinQueue(w http.ResponseWriter, r *http.Request) {
 
 	queue, err := h.queueService.JoinQueue(r.Context(), req.CustomerID, req.CustomerName, req.ServiceID, req.ServiceName, req.BarberID)
 	if err != nil {
-		slog.Error("failed to join queue", "error", err)
-		response.InternalServerError(w, "Gagal bergabung ke antrian")
+		handleJoinError(w, err)
 		return
 	}
 
@@ -172,5 +171,21 @@ func handleQueueError(w http.ResponseWriter, err error) {
 	} else {
 		slog.Error("queue operation failed", "error", err)
 		response.InternalServerError(w, "Operasi antrian gagal")
+	}
+}
+
+func handleJoinError(w http.ResponseWriter, err error) {
+	msg := err.Error()
+	if strings.Contains(msg, "jam operasional") {
+		response.BadRequest(w, "Maaf, barbershop sedang tutup. Jam operasional: 09:00 - 21:00")
+	} else if strings.Contains(msg, "antrian sudah penuh") {
+		response.BadRequest(w, "Antrian hari ini sudah penuh. Silakan datang besok.")
+	} else if strings.Contains(msg, "antrian aktif") {
+		response.BadRequest(w, "Anda sudah memiliki antrian aktif. Selesaikan antrian terlebih dahulu.")
+	} else if strings.Contains(msg, "pembatalan") {
+		response.Forbidden(w, msg)
+	} else {
+		slog.Error("failed to join queue", "error", err)
+		response.InternalServerError(w, "Gagal bergabung ke antrian")
 	}
 }

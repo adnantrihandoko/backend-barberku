@@ -10,22 +10,36 @@ import (
 )
 
 var (
-	ErrQueueNotFound    = errors.New("antrian tidak ditemukan")
-	ErrQueueNotWaiting  = errors.New("antrian tidak dalam status menunggu")
-	ErrQueueNotCalled   = errors.New("antrian tidak dalam status dipanggil")
-	ErrQueueNotServing  = errors.New("antrian tidak dalam status dilayani")
-	ErrQueueAlreadyDone = errors.New("antrian sudah selesai")
+	ErrQueueNotFound       = errors.New("antrian tidak ditemukan")
+	ErrQueueNotWaiting     = errors.New("antrian tidak dalam status menunggu")
+	ErrQueueNotCalled      = errors.New("antrian tidak dalam status dipanggil")
+	ErrQueueNotServing     = errors.New("antrian tidak dalam status dilayani")
+	ErrQueueAlreadyDone    = errors.New("antrian sudah selesai")
+	ErrOutsideBusinessHour = errors.New("di luar jam operasional")
+	ErrQueueFull           = errors.New("antrian sudah penuh")
+	ErrActiveQueueExists   = errors.New("anda sudah memiliki antrian aktif")
+	ErrCancelLimitReached  = errors.New("batas pembatalan harian tercapai. Silakan hubungi barber")
+	ErrCancelCooldown      = errors.New("tidak bisa bergabung kembali, harap tunggu 15 menit setelah pembatalan")
 )
 
 type QueueServiceImpl struct {
-	queueRepo repository.QueueRepository
-	broadcaster func(event string, data interface{})
+	queueRepo     repository.QueueRepository
+	broadcaster   func(event string, data interface{})
+	openHour      int
+	closeHour     int
+	maxQueueSize  int
 }
 
-func NewQueueService(queueRepo repository.QueueRepository, broadcaster func(string, interface{})) *QueueServiceImpl {
+func NewQueueService(
+	queueRepo repository.QueueRepository,
+	broadcaster func(string, interface{}),
+) *QueueServiceImpl {
 	return &QueueServiceImpl{
-		queueRepo:   queueRepo,
-		broadcaster: broadcaster,
+		queueRepo:    queueRepo,
+		broadcaster:  broadcaster,
+		openHour:     9,
+		closeHour:    21,
+		maxQueueSize: 50,
 	}
 }
 
@@ -38,6 +52,30 @@ func (s *QueueServiceImpl) GetQueueDetail(ctx context.Context, queueID string) (
 }
 
 func (s *QueueServiceImpl) JoinQueue(ctx context.Context, customerID, customerName, serviceID, serviceName string, barberID *string) (*entity.Queue, error) {
+	now := time.Now()
+
+	if now.Hour() < s.openHour || now.Hour() >= s.closeHour {
+		return nil, ErrOutsideBusinessHour
+	}
+
+	waitingCount, err := s.queueRepo.GetCountByStatus(ctx, entity.QueueStatusWaiting)
+	if err != nil {
+		return nil, err
+	}
+	if waitingCount >= s.maxQueueSize {
+		return nil, ErrQueueFull
+	}
+
+	activeQueues, err := s.queueRepo.GetByCustomerID(ctx, customerID)
+	if err != nil {
+		return nil, err
+	}
+	for _, q := range activeQueues {
+		if q.Status == string(entity.QueueStatusWaiting) || q.Status == string(entity.QueueStatusCalled) || q.Status == string(entity.QueueStatusInProgress) {
+			return nil, ErrActiveQueueExists
+		}
+	}
+
 	nextNumber, err := s.queueRepo.GetNextQueueNumber(ctx)
 	if err != nil {
 		return nil, err
@@ -51,7 +89,7 @@ func (s *QueueServiceImpl) JoinQueue(ctx context.Context, customerID, customerNa
 		ServiceName:  serviceName,
 		BarberID:     barberID,
 		Status:       string(entity.QueueStatusWaiting),
-		CreatedAt:    time.Now(),
+		CreatedAt:    now,
 	}
 
 	if err := s.queueRepo.Create(ctx, queue); err != nil {
