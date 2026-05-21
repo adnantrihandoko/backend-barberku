@@ -11,6 +11,18 @@ type AuthService interface {
 	ValidateToken(ctx context.Context, token string) (*entity.JWTClaims, error)
 }
 
+type QueueService interface {
+	GetQueueList(ctx context.Context) ([]entity.Queue, error)
+	GetQueueDetail(ctx context.Context, queueID string) (*entity.Queue, error)
+	JoinQueue(ctx context.Context, customerID, customerName, serviceID, serviceName string, barberID *string) (*entity.Queue, error)
+	CallQueue(ctx context.Context, queueID string) error
+	ServeQueue(ctx context.Context, queueID string) error
+	CompleteQueue(ctx context.Context, queueID string) error
+	SkipQueue(ctx context.Context, queueID string) error
+	CancelQueue(ctx context.Context, queueID string) error
+	AddWalkIn(ctx context.Context, customerName, serviceID, serviceName string, barberID *string) (*entity.Queue, error)
+}
+
 type BarberService interface {
 	ListBarbers(ctx context.Context) ([]entity.Barber, error)
 	GetBarber(ctx context.Context, id string) (*entity.Barber, error)
