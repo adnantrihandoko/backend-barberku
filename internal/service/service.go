@@ -6,21 +6,9 @@ import (
 	"github.com/barberku/backend-barber/internal/entity"
 )
 
-type QueueService interface {
-	JoinQueue(ctx context.Context, customerID, serviceID string, barberID *string) (*entity.Queue, error)
-	CancelQueue(ctx context.Context, queueID string) error
-	CallQueue(ctx context.Context, queueID string) error
-	CompleteQueue(ctx context.Context, queueID string) error
-	SkipQueue(ctx context.Context, queueID string) error
-	GetQueueList(ctx context.Context) ([]entity.Queue, error)
-	GetQueueDetail(ctx context.Context, queueID string) (*entity.Queue, error)
-	AddWalkIn(ctx context.Context, customerName, serviceID string, barberID *string) (*entity.Queue, error)
-}
-
 type AuthService interface {
-	Login(ctx context.Context, email, password string) (string, *entity.User, error)
-	Register(ctx context.Context, name, email, phone, password string, role entity.UserRole) (*entity.User, error)
-	ValidateToken(ctx context.Context, token string) (*entity.User, error)
+	Login(ctx context.Context, email, pin string) (*entity.LoginResponse, error)
+	ValidateToken(ctx context.Context, token string) (*entity.JWTClaims, error)
 }
 
 type BarberService interface {

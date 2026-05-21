@@ -14,6 +14,7 @@ type Config struct {
 	DBName     string
 	ServerPort string
 	WsOrigin   string
+	JWTSecret  string
 }
 
 func Load() *Config {
@@ -27,6 +28,7 @@ func Load() *Config {
 		DBName:     getEnv("DB_NAME", "barbershop"),
 		ServerPort: getEnv("SERVER_PORT", "8080"),
 		WsOrigin:   getEnv("WS_ORIGIN_ALLOWED", "*"),
+		JWTSecret:  getEnv("JWT_SECRET", "barberku-secret-key-change-in-production"),
 	}
 }
 
