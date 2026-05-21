@@ -15,6 +15,7 @@ type Config struct {
 	ServerPort string
 	WsOrigin   string
 	JWTSecret  string
+	FCMServerKey string
 }
 
 func Load() *Config {
@@ -29,6 +30,7 @@ func Load() *Config {
 		ServerPort: getEnv("SERVER_PORT", "8080"),
 		WsOrigin:   getEnv("WS_ORIGIN_ALLOWED", "*"),
 		JWTSecret:  getEnv("JWT_SECRET", "barberku-secret-key-change-in-production"),
+		FCMServerKey: getEnv("FCM_SERVER_KEY", ""),
 	}
 }
 

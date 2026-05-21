@@ -45,3 +45,9 @@ type ServiceRepository interface {
 	Update(ctx context.Context, service *entity.Service) error
 	Delete(ctx context.Context, id string) error
 }
+
+type FCMTokenRepository interface {
+	Save(ctx context.Context, token *entity.FCMToken) error
+	GetByCustomerID(ctx context.Context, customerID string) ([]entity.FCMToken, error)
+	Delete(ctx context.Context, id string) error
+}

@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/barberku/backend-barber/internal/entity"
@@ -26,17 +28,20 @@ type QueueServiceImpl struct {
 	queueRepo     repository.QueueRepository
 	settingsRepo  repository.StoreSettingsRepository
 	broadcaster   func(event string, data interface{})
+	fcmService    FCMService
 }
 
 func NewQueueService(
 	queueRepo repository.QueueRepository,
 	settingsRepo repository.StoreSettingsRepository,
 	broadcaster func(string, interface{}),
+	fcmService FCMService,
 ) *QueueServiceImpl {
 	return &QueueServiceImpl{
 		queueRepo:    queueRepo,
 		settingsRepo: settingsRepo,
 		broadcaster:  broadcaster,
+		fcmService:   fcmService,
 	}
 }
 
@@ -122,6 +127,16 @@ func (s *QueueServiceImpl) CallQueue(ctx context.Context, queueID string) error 
 
 	if err := s.queueRepo.Update(ctx, queue); err != nil {
 		return err
+	}
+
+	if s.fcmService != nil {
+		go func() {
+			title := "Giliran Anda Tiba!"
+			body := fmt.Sprintf("Nomor antrian %d, silakan ke kasir.", queue.QueueNumber)
+			if err := s.fcmService.SendNotification(context.Background(), queue.CustomerID, title, body); err != nil {
+				slog.Error("failed to send FCM notification", "queue_id", queueID, "error", err)
+			}
+		}()
 	}
 
 	s.broadcastUpdate()
