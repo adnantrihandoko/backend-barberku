@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/barberku/backend-barber/internal/entity"
 	"github.com/barberku/backend-barber/internal/service"
 	"github.com/barberku/backend-barber/pkg/response"
@@ -20,9 +22,9 @@ func NewStoreSettingsHandler(settingsService service.StoreSettingsService) *Stor
 	}
 }
 
-func (h *StoreSettingsHandlerImpl) RegisterRoutes(r *http.ServeMux) {
-	r.HandleFunc("GET /api/v1/settings", h.GetSettings)
-	r.HandleFunc("PUT /api/v1/settings", h.UpdateSettings)
+func (h *StoreSettingsHandlerImpl) RegisterRoutes(r chi.Router) {
+	r.Get("/", h.GetSettings)
+	r.Put("/", h.UpdateSettings)
 }
 
 func (h *StoreSettingsHandlerImpl) GetSettings(w http.ResponseWriter, r *http.Request) {

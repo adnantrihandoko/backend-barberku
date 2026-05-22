@@ -3,6 +3,9 @@ package service
 import (
 	"context"
 	"errors"
+	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/barberku/backend-barber/internal/entity"
 	"github.com/barberku/backend-barber/internal/repository"
@@ -31,12 +34,16 @@ func (s *ServiceServiceImpl) GetService(ctx context.Context, id string) (*entity
 }
 
 func (s *ServiceServiceImpl) CreateService(ctx context.Context, name, description string, price float64, duration int) (*entity.Service, error) {
+	now := time.Now()
 	service := &entity.Service{
+		ID:          uuid.New().String(),
 		Name:        name,
 		Description: description,
 		Price:       price,
 		Duration:    duration,
 		IsActive:    true,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 
 	if err := s.serviceRepo.Create(ctx, service); err != nil {

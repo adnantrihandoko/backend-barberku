@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/barberku/backend-barber/internal/service"
 	"github.com/barberku/backend-barber/pkg/response"
 )
@@ -19,8 +21,8 @@ func NewFCMHandler(fcmService service.FCMService) *FCMHandlerImpl {
 	}
 }
 
-func (h *FCMHandlerImpl) RegisterRoutes(r *http.ServeMux) {
-	r.HandleFunc("POST /api/v1/fcm/register", h.RegisterToken)
+func (h *FCMHandlerImpl) RegisterRoutes(r chi.Router) {
+	r.Post("/register", h.RegisterToken)
 }
 
 type registerTokenRequest struct {

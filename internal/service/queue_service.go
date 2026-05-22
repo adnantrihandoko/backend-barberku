@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/barberku/backend-barber/internal/entity"
 	"github.com/barberku/backend-barber/internal/repository"
 )
@@ -109,7 +111,9 @@ func (s *QueueServiceImpl) JoinQueue(ctx context.Context, customerID, customerNa
 	}
 
 	queue := &entity.Queue{
+		ID:           uuid.New().String(),
 		QueueNumber:  nextNumber,
+		Position:     waitingCount + 1,
 		CustomerID:   customerID,
 		CustomerName: customerName,
 		ServiceID:    serviceID,
@@ -238,20 +242,28 @@ func (s *QueueServiceImpl) CancelQueue(ctx context.Context, queueID string) erro
 }
 
 func (s *QueueServiceImpl) AddWalkIn(ctx context.Context, customerName, serviceID, serviceName string, barberID *string) (*entity.Queue, error) {
+	now := time.Now()
 	nextNumber, err := s.queueRepo.GetNextQueueNumber(ctx)
 	if err != nil {
 		return nil, err
 	}
 
+	waitingCount, err := s.queueRepo.GetCountByStatus(ctx, entity.QueueStatusWaiting)
+	if err != nil {
+		return nil, err
+	}
+
 	queue := &entity.Queue{
+		ID:           uuid.New().String(),
 		QueueNumber:  nextNumber,
+		Position:     waitingCount + 1,
 		CustomerID:   "walk-in",
 		CustomerName: customerName,
 		ServiceID:    serviceID,
 		ServiceName:  serviceName,
 		BarberID:     barberID,
 		Status:       string(entity.QueueStatusWaiting),
-		CreatedAt:    time.Now(),
+		CreatedAt:    now,
 	}
 
 	if err := s.queueRepo.Create(ctx, queue); err != nil {

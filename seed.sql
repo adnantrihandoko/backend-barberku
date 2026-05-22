@@ -11,7 +11,7 @@ VALUES (
   'admin@barberku.com',
   '+6281234567890',
   'admin',
-  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', -- bcrypt hash dari "1234"
+  '$2b$12$yerCgCD6vYVSdGGEcUgUGOTUA1LhRTOAHfjeEAEjEyk65710s09du', -- bcrypt hash dari "1234"
   true,
   NOW(),
   NOW()

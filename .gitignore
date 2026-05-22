@@ -1,40 +1,6 @@
-# Binaries
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
 server
-
-# Test binary
-*.test
-
-# Output of the go coverage tool
-*.out
-
-# Go workspace
-go.work
-go.work.sum
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Environment
 .env
-.env.local
-.env.*.local
-
-# Build artifacts
-/build/
-/dist/
-
-# Firebase credentials
 firebase-credentials.json
+*.exe
+*.log
+.DS_Store

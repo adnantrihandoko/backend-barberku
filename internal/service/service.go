@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/barberku/backend-barber/internal/entity"
 )
@@ -37,4 +38,18 @@ type ServiceService interface {
 	CreateService(ctx context.Context, name, description string, price float64, duration int) (*entity.Service, error)
 	UpdateService(ctx context.Context, id, name, description string, price float64, duration int, isActive bool) (*entity.Service, error)
 	DeleteService(ctx context.Context, id string) error
+}
+
+type HistoryService interface {
+	GetHistory(ctx context.Context, customerID string) ([]entity.Queue, error)
+	RateService(ctx context.Context, queueID string, rating int, comment string) error
+}
+
+type StatsService interface {
+	GetDailyStats(ctx context.Context, date time.Time) (*entity.DailyStats, error)
+}
+
+type StoreSettingsService interface {
+	GetSettings(ctx context.Context) (*entity.StoreSettings, error)
+	UpdateSettings(ctx context.Context, settings *entity.StoreSettings) error
 }

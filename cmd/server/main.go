@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	gorillaWs "github.com/gorilla/websocket"
 	"google.golang.org/api/option"
 
 	"github.com/barberku/backend-barber/internal/handler"
@@ -129,7 +130,7 @@ func main() {
 	})
 
 	r.Get("/ws", func(w http.ResponseWriter, r *http.Request) {
-		upgrader := websocket.Upgrader{
+		upgrader := gorillaWs.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
 			CheckOrigin: func(r *http.Request) bool {
@@ -144,7 +145,7 @@ func main() {
 		}
 
 		client := websocket.NewClient(hub, conn)
-		hub.register <- client
+		hub.Register(client)
 
 		go client.WritePump()
 		go client.ReadPump()

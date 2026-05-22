@@ -3,6 +3,9 @@ package service
 import (
 	"context"
 	"errors"
+	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/barberku/backend-barber/internal/entity"
 	"github.com/barberku/backend-barber/internal/repository"
@@ -31,10 +34,14 @@ func (s *BarberServiceImpl) GetBarber(ctx context.Context, id string) (*entity.B
 }
 
 func (s *BarberServiceImpl) CreateBarber(ctx context.Context, name, specialty string) (*entity.Barber, error) {
+	now := time.Now()
 	barber := &entity.Barber{
+		ID:        uuid.New().String(),
 		Name:      name,
 		Specialty: specialty,
 		IsActive:  true,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 
 	if err := s.barberRepo.Create(ctx, barber); err != nil {

@@ -7,13 +7,13 @@ services:
       POSTGRES_DB: barbershop
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U barber -d barbershop"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - app-network
 
   backend:
     build: .
@@ -29,11 +29,19 @@ services:
       JWT_SECRET: barberku-secret-key-change-in-production
       FCM_CREDENTIAL_PATH: /root/firebase-credentials.json
       FCM_PROJECT_ID: barberku-notif
+    env_file:
+      - .env
     volumes:
       - ./firebase-credentials.json:/root/firebase-credentials.json:ro
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - app-network
 
 volumes:
   pgdata:
+
+networks:
+  app-network:
+    driver: bridge

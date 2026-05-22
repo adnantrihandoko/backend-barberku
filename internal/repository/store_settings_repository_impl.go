@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/barberku/backend-barber/internal/entity"
 	"github.com/jackc/pgx/v5"

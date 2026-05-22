@@ -19,10 +19,10 @@ func NewStatsRepository(pool *pgxpool.Pool) *StatsRepositoryImpl {
 func (r *StatsRepositoryImpl) GetDailyStats(ctx context.Context, date time.Time) (*entity.DailyStats, error) {
 	query := `
 		SELECT
-			COUNT(*) FILTER (WHERE status = 'completed') as total_served,
-			COUNT(*) FILTER (WHERE status = 'canceled') as total_canceled,
-			COALESCE(AVG(EXTRACT(EPOCH FROM (called_at - created_at)) / 60) FILTER (WHERE called_at IS NOT NULL), 0) as avg_wait_time_min,
-			COALESCE(AVG(EXTRACT(EPOCH FROM (completed_at - called_at)) / 60) FILTER (WHERE completed_at IS NOT NULL AND called_at IS NOT NULL), 0) as avg_service_time_min,
+			COUNT(*) FILTER (WHERE q.status = 'completed') as total_served,
+			COUNT(*) FILTER (WHERE q.status = 'canceled') as total_canceled,
+			COALESCE(AVG(EXTRACT(EPOCH FROM (q.called_at - q.created_at)) / 60) FILTER (WHERE q.called_at IS NOT NULL), 0) as avg_wait_time_min,
+			COALESCE(AVG(EXTRACT(EPOCH FROM (q.completed_at - q.called_at)) / 60) FILTER (WHERE q.completed_at IS NOT NULL AND q.called_at IS NOT NULL), 0) as avg_service_time_min,
 			COALESCE(SUM(s.price) FILTER (WHERE q.status = 'completed'), 0) as total_revenue
 		FROM queues q
 		LEFT JOIN services s ON q.service_id = s.id

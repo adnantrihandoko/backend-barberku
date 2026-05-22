@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/barberku/backend-barber/internal/service"
 	"github.com/barberku/backend-barber/pkg/response"
 )
@@ -19,8 +21,8 @@ func NewStatsHandler(statsService service.StatsService) *StatsHandlerImpl {
 	}
 }
 
-func (h *StatsHandlerImpl) RegisterRoutes(r *http.ServeMux) {
-	r.HandleFunc("GET /api/v1/stats", h.GetDailyStats)
+func (h *StatsHandlerImpl) RegisterRoutes(r chi.Router) {
+	r.Get("/", h.GetDailyStats)
 }
 
 func (h *StatsHandlerImpl) GetDailyStats(w http.ResponseWriter, r *http.Request) {

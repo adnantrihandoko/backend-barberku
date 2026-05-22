@@ -76,6 +76,10 @@ func (h *Hub) Broadcast(event string, data interface{}) {
 	h.broadcast <- payload
 }
 
+func (h *Hub) Register(client *Client) {
+	h.register <- client
+}
+
 func (h *Hub) GetClientCount() int {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
