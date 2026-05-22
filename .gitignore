@@ -35,3 +35,6 @@ Thumbs.db
 # Build artifacts
 /build/
 /dist/
+
+# Firebase credentials
+firebase-credentials.json

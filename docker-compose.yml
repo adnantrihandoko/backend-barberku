@@ -27,7 +27,10 @@ services:
       DB_NAME: barbershop
       WS_ORIGIN_ALLOWED: "*"
       JWT_SECRET: barberku-secret-key-change-in-production
-      FCM_SERVER_KEY: ${FCM_SERVER_KEY:-}
+      FCM_CREDENTIAL_PATH: /root/firebase-credentials.json
+      FCM_PROJECT_ID: barberku-notif
+    volumes:
+      - ./firebase-credentials.json:/root/firebase-credentials.json:ro
     depends_on:
       db:
         condition: service_healthy

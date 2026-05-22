@@ -9,9 +9,12 @@ import (
 	"syscall"
 	"time"
 
+	firebase "firebase.google.com/go/v4"
+	"firebase.google.com/go/v4/messaging"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"google.golang.org/api/option"
 
 	"github.com/barberku/backend-barber/internal/handler"
 	"github.com/barberku/backend-barber/internal/middleware"
@@ -73,7 +76,25 @@ func main() {
 	storeSettingsRepo := repository.NewStoreSettingsRepository(db.Pool)
 	fcmTokenRepo := repository.NewFCMTokenRepository(db.Pool)
 
-	fcmService := service.NewFCMService(fcmTokenRepo, cfg.FCMServerKey)
+	var fcmClient *messaging.Client
+	if _, err := os.Stat(cfg.FCMCredPath); err == nil {
+		firebaseApp, err := firebase.NewApp(ctx, nil, option.WithCredentialsFile(cfg.FCMCredPath))
+		if err != nil {
+			slog.Error("failed to initialize Firebase app", "error", err)
+		} else {
+			client, err := firebaseApp.Messaging(ctx)
+			if err != nil {
+				slog.Error("failed to create Firebase messaging client", "error", err)
+			} else {
+				fcmClient = client
+				slog.Info("Firebase initialized successfully", "cred_path", cfg.FCMCredPath)
+			}
+		}
+	} else {
+		slog.Warn("Firebase credentials not found, push notifications disabled", "path", cfg.FCMCredPath)
+	}
+
+	fcmService := service.NewFCMService(fcmTokenRepo, fcmClient)
 	fcmHandler := handler.NewFCMHandler(fcmService)
 
 	queueService := service.NewQueueService(queueRepo, storeSettingsRepo, broadcaster, fcmService)

@@ -1,14 +1,12 @@
 package service
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
 	"time"
+
+	"firebase.google.com/go/v4/messaging"
 
 	"github.com/barberku/backend-barber/internal/entity"
 	"github.com/barberku/backend-barber/internal/repository"
@@ -20,21 +18,26 @@ type FCMService interface {
 }
 
 type FCMServiceImpl struct {
-	fcmRepo    repository.FCMTokenRepository
-	serverKey  string
-	httpClient *http.Client
+	fcmRepo  repository.FCMTokenRepository
+	client   *messaging.Client
+	enabled  bool
 }
 
-func NewFCMService(fcmRepo repository.FCMTokenRepository, serverKey string) *FCMServiceImpl {
+func NewFCMService(fcmRepo repository.FCMTokenRepository, client *messaging.Client) *FCMServiceImpl {
+	enabled := client != nil
+	if !enabled {
+		slog.Warn("FCM client is nil, push notifications disabled")
+	}
 	return &FCMServiceImpl{
-		fcmRepo:    fcmRepo,
-		serverKey:  serverKey,
-		httpClient: &http.Client{Timeout: 10 * time.Second},
+		fcmRepo: fcmRepo,
+		client:  client,
+		enabled: enabled,
 	}
 }
 
 func (s *FCMServiceImpl) RegisterToken(ctx context.Context, customerID, token, platform string) error {
 	fcmToken := &entity.FCMToken{
+		ID:         fmt.Sprintf("%s-%s", customerID, token),
 		CustomerID: customerID,
 		Token:      token,
 		Platform:   platform,
@@ -46,6 +49,11 @@ func (s *FCMServiceImpl) RegisterToken(ctx context.Context, customerID, token, p
 }
 
 func (s *FCMServiceImpl) SendNotification(ctx context.Context, customerID, title, body string) error {
+	if !s.enabled {
+		slog.Warn("FCM not enabled, skipping notification", "customer_id", customerID)
+		return nil
+	}
+
 	tokens, err := s.fcmRepo.GetByCustomerID(ctx, customerID)
 	if err != nil {
 		return fmt.Errorf("failed to get FCM tokens: %w", err)
@@ -56,49 +64,43 @@ func (s *FCMServiceImpl) SendNotification(ctx context.Context, customerID, title
 		return nil
 	}
 
+	tokenStrings := make([]string, 0, len(tokens))
 	for _, t := range tokens {
-		if err := s.sendToFCM(ctx, t.Token, title, body); err != nil {
-			slog.Error("failed to send FCM notification", "token_id", t.ID, "error", err)
-		}
+		tokenStrings = append(tokenStrings, t.Token)
 	}
 
-	return nil
-}
-
-func (s *FCMServiceImpl) sendToFCM(ctx context.Context, token, title, body string) error {
-	payload := map[string]interface{}{
-		"to": token,
-		"notification": map[string]string{
-			"title": title,
-			"body":  body,
+	message := &messaging.MulticastMessage{
+		Tokens: tokenStrings,
+		Notification: &messaging.Notification{
+			Title: title,
+			Body:  body,
 		},
-		"data": map[string]string{
+		Data: map[string]string{
 			"type": "queue_called",
 		},
 	}
 
-	bodyBytes, err := json.Marshal(payload)
+	response, err := s.client.SendEachForMulticast(ctx, message)
 	if err != nil {
-		return fmt.Errorf("failed to marshal payload: %w", err)
+		return fmt.Errorf("failed to send FCM notification: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://fcm.googleapis.com/fcm/send", bytes.NewBuffer(bodyBytes))
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
+	slog.Info("FCM notification sent",
+		"customer_id", customerID,
+		"total", len(tokens),
+		"success", response.SuccessCount,
+		"failure", response.FailureCount,
+	)
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "key="+s.serverKey)
-
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("FCM returned status %d: %s", resp.StatusCode, string(respBody))
+	if response.FailureCount > 0 {
+		for i, result := range response.Responses {
+			if result.Error != nil {
+				slog.Error("FCM send failed for token",
+					"index", i,
+					"error", result.Error,
+				)
+			}
+		}
 	}
 
 	return nil

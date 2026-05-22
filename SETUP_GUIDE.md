@@ -41,14 +41,16 @@ git clone https://github.com/adnantrihandoko/frontend-barberku.git barberku_app
 5. Klik **"Create project"**
 6. Tunggu hingga selesai, klik **"Continue"**
 
-### 3.2 Dapatkan Project ID dan Sender ID
+### 3.2 Dapatkan Project ID dan Service Account Key
 
 1. Di Firebase Console, klik ikon gear ⚙️ → **Project Settings**
 2. Tab **General**, catat:
-   - **Project ID**: `barberku-xxxxx`
-   - **Project Number** (digunakan sebagai Sender ID)
-3. Tab **Cloud Messaging**, catat:
-   - **Server key** (akan dipakai di backend)
+   - **Project ID**: `barberku-notif` (atau project ID Anda)
+3. Tab **Service accounts**:
+   - Klik **"Generate new private key"**
+   - Konfirmasi dengan klik **"Generate key"**
+   - File `project-id-firebase-adminsdk-xxxxx.json` akan terdownload
+   - Pindahkan file ke `backend-barber/firebase-credentials.json`
 
 ### 3.3 Daftarkan Aplikasi Android
 
@@ -199,7 +201,8 @@ DB_NAME=barbershop
 SERVER_PORT=8080
 WS_ORIGIN_ALLOWED=*
 JWT_SECRET=barberku-secret-key-change-in-production
-FCM_SERVER_KEY=AAAA...  # <-- paste Server Key dari Firebase Console
+FCM_CREDENTIAL_PATH=firebase-credentials.json
+FCM_PROJECT_ID=barberku-notif
 ```
 
 ### 5.2 Generate Valid PIN Hash untuk Admin
@@ -354,7 +357,7 @@ flutter run -d <device_id>
 
 ### 8.2 Test Notification
 
-1. Pastikan FCM Server Key sudah benar di `.env`
+1. Pastikan `firebase-credentials.json` sudah ada di `backend-barber/`
 2. Login sebagai admin
 3. Tambahkan antrian
 4. Panggil antrian tersebut
@@ -362,7 +365,7 @@ flutter run -d <device_id>
    ```bash
    docker compose logs -f backend | grep FCM
    ```
-   Output: `"sending FCM notification"` atau `"failed to send FCM notification"`
+   Output yang diharapkan: `"Firebase initialized successfully"` dan `"FCM notification sent"`
 
 ### 8.3 Test API Langsung
 
@@ -417,16 +420,17 @@ DioException: SocketException: Connection refused
 - iOS simulator: gunakan `localhost`
 - Device fisik: gunakan IP komputer (contoh: `192.168.1.10`)
 
-### 9.3 FCM "401 Unauthorized"
+### 9.3 FCM "401 Unauthorized" atau Firebase init gagal
 
 ```
-FCM returned status 401: ...
+failed to initialize Firebase app
 ```
 
 **Solusi**:
-1. Verifikasi Server Key di `.env` sudah benar
-2. Regenerate Server Key jika perlu (Firebase Console → Cloud Messaging)
-3. Restart backend: `docker compose restart backend`
+1. Pastikan `firebase-credentials.json` ada di `backend-barber/`
+2. Verifikasi file JSON valid dan tidak expired
+3. Generate ulang service account key jika perlu (Firebase Console → Project Settings → Service accounts → Generate new private key)
+4. Restart backend: `docker compose restart backend`
 
 ### 9.4 PostgreSQL connection failed
 
